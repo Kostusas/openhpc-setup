@@ -1,31 +1,136 @@
-- name: Ensure the tmp directory exists
-  ansible.builtin.file:
-    path: "{{ role_path }}/tmp"
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-
-- name: Template the openhpc recipe
+---
+- name: Configure internal network interface
   ansible.builtin.template:
-    src: "{{ role_path }}/templates/recipe.sh.j2"
-    dest: "{{ role_path }}/tmp/recipe.sh"
-    owner: root
-    group: root
-    mode: 0744
-
-- name: Configure the network
-  ansible.builtin.template:
-    src: "{{ role_path }}/templates/sms_ifcfg.j2"
+    src: "sms_ifcfg.j2"
     dest: "/etc/sysconfig/network-scripts/ifcfg-{{ sms_eth_internal }}"
     owner: root
     group: root
-    mode: 0744
+    mode: '0644'
 
 - name: Restart NetworkManager
   ansible.builtin.systemd:
     name: NetworkManager
     state: restarted
 
-- name: Run the openhpc recipe and log the output
-  ansible.builtin.shell: "{{ role_path }}/tmp/recipe.sh |& tee recipe.log"
+- name: Add SMS entry to /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ sms_ip }} {{ sms_name }}.{{ ipaserver_domain }} {{ sms_name }}"
+    state: present
+
+- name: Set system hostname
+  ansible.builtin.hostname:
+    name: "{{ sms_name }}.{{ ipaserver_domain }}"
+
+- name: Configure chrony service
+  ansible.builtin.blockinfile:
+    path: /etc/chrony.conf
+    block: |
+      local stratum 10
+      server {{ ntp_server }}
+      allow all
+
+- name: Ensure chronyd service running
+  ansible.builtin.systemd:
+    name: chronyd
+    enabled: true
+    state: restarted
+
+- name: Check if slurm.conf exists
+  ansible.builtin.stat:
+    path: /etc/slurm/slurm.conf
+  register: slurm_conf
+
+- name: Copy default slurm.conf
+  ansible.builtin.copy:
+    remote_src: true
+    src: /etc/slurm/slurm.conf.ohpc
+    dest: /etc/slurm/slurm.conf
+    mode: '0644'
+  when: not slurm_conf.stat.exists
+
+- name: Copy cgroup.conf example
+  ansible.builtin.copy:
+    remote_src: true
+    src: /etc/slurm/cgroup.conf.example
+    dest: /etc/slurm/cgroup.conf
+    mode: '0644'
+
+- name: Set SlurmctldHost
+  ansible.builtin.replace:
+    path: /etc/slurm/slurm.conf
+    regexp: '^SlurmctldHost=.*'
+    replace: 'SlurmctldHost={{ sms_name }}'
+
+- name: Generate munge key if missing
+  ansible.builtin.command: /usr/sbin/create-munge-key
+  args:
+    creates: /etc/munge/munge.key
+
+- name: Ensure munge key permissions
+  ansible.builtin.file:
+    path: /etc/munge/munge.key
+    owner: munge
+    group: munge
+    mode: '0400'
+
+- name: Configure Warewulf ipaddr
+  ansible.builtin.lineinfile:
+    path: /etc/warewulf/warewulf.conf
+    regexp: '^\s*ipaddr:'
+    line: "  ipaddr: {{ sms_ip }}"
+
+- name: Configure Warewulf netmask
+  ansible.builtin.lineinfile:
+    path: /etc/warewulf/warewulf.conf
+    regexp: '^\s*netmask:'
+    line: "  netmask: {{ internal_netmask }}"
+
+- name: Configure Warewulf network
+  ansible.builtin.lineinfile:
+    path: /etc/warewulf/warewulf.conf
+    regexp: '^\s*network:'
+    line: "  network: {{ internal_network }}"
+
+- name: Configure Warewulf template mode
+  ansible.builtin.lineinfile:
+    path: /etc/warewulf/warewulf.conf
+    regexp: '^\s*template:'
+    line: '  template: static'
+
+- name: Configure Warewulf DHCP range start
+  ansible.builtin.lineinfile:
+    path: /etc/warewulf/warewulf.conf
+    regexp: '^\s*range start:'
+    line: "      range start: {{ dhcp_compute_ip_start }}"
+
+- name: Configure Warewulf DHCP range end
+  ansible.builtin.lineinfile:
+    path: /etc/warewulf/warewulf.conf
+    regexp: '^\s*range end:'
+    line: "      range end: {{ dhcp_compute_ip_end }}"
+
+- name: Enable Warewulf NFS mount
+  ansible.builtin.lineinfile:
+    path: /etc/warewulf/warewulf.conf
+    regexp: '^\s*mount:'
+    line: '  mount: true'
+
+- name: Configure Warewulf services
+  ansible.builtin.command: wwctl configure --all
+  changed_when: false
+
+- name: Enable warewulfd
+  ansible.builtin.systemd:
+    name: warewulfd
+    enabled: true
+    state: started
+
+- name: Enable munge and slurmctld
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - munge
+    - slurmctld

@@ -1,19 +1,18 @@
 # OpenHPC Cluster Deployment with Ansible
 
-This guide provides instructions to deploy an OpenHPC cluster using Ansible.
-Follow the steps below in the order they are presented.
+This guide provides instructions to deploy an OpenHPC cluster using Ansible. Follow the steps below in the order they are presented.
 
 ## Prerequisites
 
 Control node:
-- Rocky Linux 9.4 on the head node 
+- Rocky Linux 9.4 on the head node
 - Git, Python, pip, Ansible and its collections:
-```bash
-    dnf install git python3.9-pip -y
-    pip install --user ansible
-    ansible-galaxy install -r requirements.yml
-    pip install -r requirements.txt
-```
+  ```bash
+      dnf install git python3.9-pip -y
+      pip install --user ansible
+      ansible-galaxy install -r requirements.yml
+      pip install -r requirements.txt
+  ```
 - Head node has at least one interface with internet access (VLAN 1713 Core for example)
 - Head node has at least one interface connected to the LAN network (VXLAN for example)
 
@@ -21,13 +20,14 @@ Worker nodes:
 - PXE boot ready through the LAN network headnode is connected to
 - Worker nodes are connected to the same LAN network as the head node (VXLAN for example)
 
-For both devices, make sure you choose the NIC that is being emulated is "rtl8139" (or just not "virtio") in the VM settings.
+For both devices, make sure the NIC being emulated is "rtl8139" (or just not "virtio") in the VM settings.
 
 ## Roles
 
 There are following roles in the `roles` directory:
 
-- `openhpc_init`: Initializes and sets up the OpenHPC cluster on the head node. Based on the OpenHPC installation guide.
+- `openhpc_install`: Installs core OpenHPC, Warewulf and Slurm packages.
+- `openhpc_init`: Configures the head node services for OpenHPC using Ansible tasks based on the OpenHPC installation guide.
 - `firewall`: Configures the firewall on the head node to allow PXE boot and other services.
 - `slurmctl_init`: Initializes the Slurm controller on the head node.
 - `grafana`: Installs and configures Grafana with pre-configured dashboards.
@@ -38,6 +38,7 @@ There are following roles in the `roles` directory:
 
 Define your inventory in `inventory.ini`.
 Use `control` for the head node and `compute` for the worker nodes.
+
 ```
 [control]
 localhost ansible_connection=local
@@ -53,20 +54,25 @@ Make sure to configure your `localhost` host variables in `host_vars/localhost.y
 
 ## Role Variables
 
-In addition to host variables, its also optional to adjust the default role variables in `roles/<role>/defaults/main.yml`:
+In addition to host variables, it's also optional to adjust the default role variables in `roles/<role>/defaults/main.yml`:
 
 ## Playbooks and the order of execution
 
+### Base Software Installation
+
+To preload a Rocky 9 image with all required OpenHPC software, run:
+
+```sh
+ansible-playbook playbooks/hpc_install.yml
+```
+
 ### HPC Cluster Initialization
 
-The main playbook to initialize the HPC cluster is `hpc_init.yml`. 
-Run it via the following command:
+After the packages are installed, configure the head node services with:
 
 ```sh
 ansible-playbook playbooks/hpc_init.yml
 ```
-
-The output of the installation script will be logged in `recipe.log`.
 
 ### IMPORTANT Pulling Compute Image
 
@@ -77,7 +83,7 @@ dnf install -y apptainer
 apptainer build --docker-login --sandbox /tmp/rocky-compute/ docker://git.labs.vu.nl:5050/itvo/proto-openhpc:latest
 ```
 
-where you will be promted to login with your GitLab username/password. 
+where you will be prompted to login with your GitLab username/password.
 Once completed, you will obtain a `.sif` file which contains the image for the compute nodes.
 After that, set them up for warewulf:
 
@@ -96,7 +102,7 @@ To add compute nodes to the Warewulf database, run the following playbook:
 ansible-playbook playbooks/add_nodes.yml -i inventory.ini
 ```
 
-At this point, you should restart your compute nodes manually on Open Nebula. 
+At this point, you should restart your compute nodes manually on Open Nebula.
 After the restart, the compute nodes should be able to PXE boot and join the cluster.
 
 ### Set-up Slurm
@@ -115,4 +121,4 @@ To set up monitoring with Grafana and Prometheus, run the following playbook:
 ansible-playbook playbooks/monitoring.yml -i inventory.ini
 ```
 
-Monitoring compute nodes is broken for now
+Monitoring compute nodes is broken for now.

@@ -1,0 +1,15 @@
+---
+- name: Enable CRB repository
+  community.general.dnf_config_manager:
+    name: crb
+    state: enabled
+
+- name: Install OpenHPC packages
+  ansible.builtin.dnf:
+    name:
+      - "http://repos.openhpc.community/OpenHPC/3/EL_9/x86_64/ohpc-release-3-1.el9.x86_64.rpm"
+      - ohpc-base
+      - warewulf-ohpc
+      - hwloc-ohpc
+      - ohpc-slurm-server
+    state: present

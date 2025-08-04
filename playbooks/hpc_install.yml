@@ -1,8 +1,7 @@
 ---
-- name: Initialize HPC
+- name: Install OpenHPC software
   hosts: localhost
   become: true
   become_method: su
   roles:
-    - openhpc_init
-    - firewall
+    - openhpc_install
