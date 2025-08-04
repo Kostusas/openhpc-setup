@@ -1,0 +1,32 @@
+---
+- name: Enable CRB repository
+  community.general.dnf_config_manager:
+    name: crb
+    state: enabled
+
+- name: Install OpenHPC EL
+  ansible.builtin.dnf:
+    name:
+      - "https://repos.openhpc.community/OpenHPC/3/EL_9/x86_64/ohpc-release-3-1.el9.x86_64.rpm"
+    state: present
+    disable_gpg_check: true
+
+- name: Install OpenHPC packages
+  ansible.builtin.dnf:
+    name:
+      - dnf-plugins-core
+      - ohpc-base
+      - warewulf-ohpc
+      - hwloc-ohpc
+      - ohpc-slurm-server
+      - nhc-ohpc
+      - ohpc-autotools
+      - EasyBuild-ohpc
+      - spack-ohpc
+      - valgrind-ohpc
+      - gnu14-compilers-ohpc 
+      - openmpi5-pmix-gnu14-ohpc
+      - mpich-ofi-gnu14-ohpc
+      - ohpc-gnu14-perf-tools
+    state: present
+

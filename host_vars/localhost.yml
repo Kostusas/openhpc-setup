@@ -1,5 +1,5 @@
 ipaserver_domain: ipa.test
-ipaserver_realm: IPA.TEST 
+ipaserver_realm: IPA.TEST
 
 sms_name: sms
 sms_ip: 10.0.0.254
