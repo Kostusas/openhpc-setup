@@ -1,0 +1,7 @@
+- name: Initialize HPC
+  hosts: localhost
+  become: true
+  become_method: su
+  roles:
+    - openhpc_init
+    - firewall

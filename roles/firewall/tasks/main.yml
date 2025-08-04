@@ -1,0 +1,50 @@
+- name: Set internal network interface
+  ansible.builtin.firewalld:
+    zone: internal
+    interface: "{{ eth_provision }}"
+    permanent: true
+    state: enabled
+    immediate: true
+
+- name: Add required PXE boot services to the internal zone
+  ansible.builtin.firewalld:
+    zone: internal
+    service: "{{ item }}"
+    permanent: true
+    state: enabled
+  loop:
+    - http
+    - https
+    - nfs
+    - ftp
+    - tftp
+
+- name: Open internal listening ports 
+  ansible.builtin.firewalld:
+    zone: internal
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: enabled
+  loop:
+    - 9873 # PXE provisioning
+    - 6817 # slurmctld
+    - 6818 # slurmd
+    - 9090 # Prometheus
+    - 9100 # Node exporter
+    - 9341 # Slurm exporter
+    - 3000 # grafana
+
+- name: Open public monitoring dashboard ports 
+  ansible.builtin.firewalld:
+    zone: public
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: enabled
+  loop:
+    - 9090 # Prometheus
+    - 3000 # grafana
+
+- name: Reload firewalld to apply changes
+  ansible.builtin.systemd:
+    name: firewalld
+    state: reloaded

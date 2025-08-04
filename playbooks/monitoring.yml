@@ -1,0 +1,37 @@
+# ---
+- name: Deploy node exporters
+  hosts: all
+  become_method: ansible.builtin.su # fixes absence of sudo in compute nodes
+  roles:
+    - role: prometheus.prometheus.node_exporter
+
+- name: Deploy slurm exporter, Prometheus server and listen on all of the exporters
+  hosts: localhost
+  pre_tasks:
+    - name: Set scraping targets for localhost
+      ansible.builtin.set_fact:
+        localhost_targets:
+          - "localhost:9090"
+          - "localhost:9100"
+          - "localhost:9341"
+
+    - name: Set scraping targets for compute nodes
+      ansible.builtin.set_fact:
+        compute_targets: "{{ groups['compute'] | product([':9100']) | map('join') | list }}"
+
+    - name: Set scraping targets for all nodes
+      ansible.builtin.set_fact:
+        all_targets: "{{ localhost_targets + compute_targets }}"
+
+  roles:
+    - role: slurm_exporter
+    - role: prometheus.prometheus.prometheus
+      prometheus_scrape_configs:
+        - job_name: "Metric exporter"
+          static_configs:
+            - targets: "{{ all_targets }}"
+
+- name: Deploy Grafana server
+  hosts: localhost
+  roles:
+    - role: grafana

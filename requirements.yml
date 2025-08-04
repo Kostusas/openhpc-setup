@@ -1,0 +1,13 @@
+collections:
+  - name: community.general
+    version: ">=9.0.0"
+    source: https://galaxy.ansible.com
+  - name: prometheus.prometheus
+    version: ">=0.22.0"
+    source: https://galaxy.ansible.com
+  - name: grafana.grafana
+    version: ">=5.6.0"
+    source: https://galaxy.ansible.com
+    
+  
+  

@@ -1,0 +1,8 @@
+sms_name: sms
+sysmgmtd_host: sms
+sms_eth_internal: ens4
+eth_provision: ens4
+sms_ip: 10.0.0.254
+ntp_server: 10.0.0.254
+internal_netmask: 255.255.252.0
+sms_mtu: 1450

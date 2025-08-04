@@ -1,0 +1,26 @@
+- name: Initialize slurm on control nodes
+  hosts: localhost
+  become: true
+  become_method: su
+  roles:
+    - role: slurmctl_init
+
+- name: Initialize slurm on compute nodes
+  hosts: compute
+  become: true
+  become_method: su
+  tasks:
+  - name: Start Munge and slurmd on compute nodes
+    ansible.builtin.systemd:
+      name: "{{ item }}"
+      state: started
+    with_items:
+      - munge
+      - slurmd
+
+- name: Initialize SQL database
+  hosts: localhost
+  become: true
+  become_method: su
+  roles:
+    - role: mysql

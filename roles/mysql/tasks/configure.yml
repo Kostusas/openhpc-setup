@@ -1,0 +1,78 @@
+- name: "Ensure MariaDB daemon is started"
+  ansible.builtin.service:
+    name: "{{ mysql_daemon }}"
+    enabled: true
+    state: started
+
+- name: Copy .my.cnf file with root password credentials.
+  ansible.builtin.template:
+    src: "root-my.cnf.j2"
+    dest: "{{ mysql_admin_home }}/.my.cnf"
+    owner: root
+    group: root
+    mode: 0600
+  when: mysql_admin_force_password_update
+
+- name: Get list of hosts for the anonymous user.
+  community.mysql.mysql_query:
+    login_db: "mysql"
+    login_unix_socket: "{{ mysql_socket }}"
+    query: SELECT Host FROM mysql.user WHERE User = %s
+    positional_args:
+      - ''
+  register: _mysql_anonymous_hosts
+
+- name: Remove anonymous MariaDB users.
+  community.mysql.mysql_query:
+    login_db: "mysql"
+    login_unix_socket: "{{ mysql_socket }}"
+    query: DELETE FROM mysql.user WHERE User=%s AND Host=%s
+    positional_args:
+      - ''
+      - "{{ item.Host }}"
+  loop: "{{ _mysql_anonymous_hosts.query_result | first }}"
+  when:
+    - not ansible_check_mode
+    - _mysql_anonymous_hosts.rowcount[0] != 0
+
+- name: Get list of hosts for the root user.
+  community.mysql.mysql_query:
+    login_db: "mysql"
+    login_unix_socket: "{{ mysql_socket }}"
+    query: SELECT Host FROM mysql.user WHERE User = %s ORDER BY (Host='localhost') ASC
+    positional_args:
+      - "{{ mysql_admin_user }}"
+  register: _mysql_root_hosts
+
+- name: Disallow root login remotely
+  community.mysql.mysql_user:
+    name: "{{ mysql_admin_user }}"
+    login_unix_socket: "{{ mysql_socket }}"
+    host: "{{ item.Host }}"
+    priv: "*.*:ALL,GRANT"
+    state: absent
+  loop: '{{ _mysql_root_hosts.query_result[0] | rejectattr("Host", "in", "localhost,::1,127.0.0.1") | list }}'
+  when: not ansible_check_mode
+
+- name: Update MariaDB root password for localhost root account
+  community.mysql.mysql_user:
+    name: "{{ mysql_admin_user }}"
+    password: "{{ mysql_admin_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
+    host: "localhost"
+  register: _mysql_root_password_update
+  when:
+    - not ansible_check_mode
+    - _mysql_root_hosts.rowcount[0] != 0
+    - mysql_admin_force_password_update
+
+- name: Output results of updating mysql root password
+  ansible.builtin.debug:
+    var: _mysql_root_password_update
+  when: mysql_debug
+
+- name: Remove MariaDB test database.
+  community.mysql.mysql_db:
+    name: test
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"

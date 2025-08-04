@@ -1,0 +1,16 @@
+- name: Add new nodes via warewulf
+  hosts: localhost
+  tasks:
+    - name: Add node with wwsh command
+      command: >
+        wwctl node add --container=rocky-compute --ipaddr={{ hostvars[item].ansible_host }} --hwaddr={{ hostvars[item].mac }} {{ item }}
+      ignore_errors: yes
+      loop: "{{ groups['compute'] }}"
+
+    - name: Build overlays
+      command: wwctl overlay build
+      ignore_errors: yes
+
+    - name: Configure warewulf
+      command: wwctl configure --all
+      ignore_errors: yes

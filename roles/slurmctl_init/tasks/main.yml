@@ -1,0 +1,14 @@
+- name: Template out slurm.conf file
+  ansible.builtin.template:
+    src: slurm.conf
+    dest: /etc/slurm/slurm.conf
+    mode: 0744
+
+- name: Enable munge and slurmctld
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  with_items:
+    - munge
+    - slurmctld

@@ -1,0 +1,21 @@
+- name: Log the location of dashboards folder
+  ansible.builtin.set_fact:
+    dashboard_path: "{{ role_path }}/dashboards"
+
+- name: Set up grafana
+  ansible.builtin.include_role:
+    name: grafana.grafana.grafana
+  vars:
+    # grafana_provisioning_synced: true
+    grafana_address: "0.0.0.0"
+    grafana_port: 3000
+    grafana_security:
+      admin_user: "admin"
+      admin_password: "newpassword"
+      allow_sign_up: false
+    grafana_datasources:
+      - name: prometheus
+        type: prometheus
+        url: http://localhost:9090
+        basicAuth: false
+    grafana_dashboards_dir: "{{ dashboard_path }}"

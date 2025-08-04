@@ -1,0 +1,21 @@
+ipaserver_domain: ipa.test
+ipaserver_realm: IPA.TEST 
+
+sms_name: sms
+sms_ip: 10.0.0.254
+sms_eth_internal: ens3
+eth_provision: ens3
+internal_network: 10.0.0.0
+internal_netmask: 255.255.252.0
+ipv4_gateway: 10.0.0.254
+dns_server: 10.0.0.254
+ntp_server: 10.0.0.254
+dhcp_compute_ip_start: 10.0.1.1
+dhcp_compute_ip_end: 10.0.1.10
+
+sysmgmtd_host: sms
+sms_mtu: 1450
+
+slurmctl_Sockets: 4
+slurmctl_ThreadsPerSocket: 1
+slurmctl_CoresPerSocket: 1

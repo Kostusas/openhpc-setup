@@ -1,0 +1,17 @@
+- name: Install pip
+  ansible.builtin.dnf:
+    name: python3-pip
+
+- name: Install python mysql client
+  ansible.builtin.pip:
+    name:
+      - pymysql
+      - cryptography
+    state: present
+
+- name: Install MariaDB
+  ansible.builtin.dnf:
+    name:
+      - mariadb
+      - mariadb-server
+    state: latest

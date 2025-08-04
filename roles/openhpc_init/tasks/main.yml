@@ -1,0 +1,31 @@
+- name: Ensure the tmp directory exists
+  ansible.builtin.file:
+    path: "{{ role_path }}/tmp"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Template the openhpc recipe
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/recipe.sh.j2"
+    dest: "{{ role_path }}/tmp/recipe.sh"
+    owner: root
+    group: root
+    mode: 0744
+
+- name: Configure the network
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/sms_ifcfg.j2"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ sms_eth_internal }}"
+    owner: root
+    group: root
+    mode: 0744
+
+- name: Restart NetworkManager
+  ansible.builtin.systemd:
+    name: NetworkManager
+    state: restarted
+
+- name: Run the openhpc recipe and log the output
+  ansible.builtin.shell: "{{ role_path }}/tmp/recipe.sh |& tee recipe.log"
