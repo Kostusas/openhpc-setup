@@ -14,7 +14,7 @@
 - name: Install OpenHPC packages
   ansible.builtin.dnf:
     name:
-      -	dnf-plugins-core
+      - dnf-plugins-core
       - ohpc-base
       - warewulf-ohpc
       - hwloc-ohpc
